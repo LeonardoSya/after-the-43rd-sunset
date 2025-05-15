@@ -1,43 +1,31 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import "./App.css";
 
 function App() {
+  const [windowSize, setWindowSize] = useState({ width: window.innerWidth, height: window.innerHeight });
+
+  useEffect(() => {
+    // 监听窗口大小变化
+    const handleResize = () => {
+      setWindowSize({ 
+        width: window.innerWidth, 
+        height: window.innerHeight 
+      });
+    };
+
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
+
   return (
     <div className="mobile-container">
-      {/* 顶部状态栏 */}
-      <div className="status-bar">
-        <div className="status-left">9:41</div>
-        <div className="status-center">
-          <div className="notch"></div>
-        </div>
-        <div className="status-right">
-          <span className="battery">100%</span>
-          <span className="wifi">📶</span>
-        </div>
-      </div>
-
-      {/* 主内容区域 */}
-      <div className="app-content">
-        <h1 className="app-title">我的应用</h1>
-        <div className="content-section">
-          <p>欢迎使用我的移动风格应用</p>
-          <p>上滑查看更多内容</p>
-        </div>
-      </div>
-
-      {/* 底部导航栏 */}
-      <div className="bottom-nav">
-        <div className="nav-item active">
-          <div className="nav-icon">🏠</div>
-          <div className="nav-text">首页</div>
-        </div>
-        <div className="nav-item">
-          <div className="nav-icon">🔍</div>
-          <div className="nav-text">搜索</div>
-        </div>
-        <div className="nav-item">
-          <div className="nav-icon">⚙️</div>
-          <div className="nav-text">设置</div>
+      {/* 空白框架 */}
+      <div className="empty-container">
+        <div className="size-display">
+          {windowSize.width} x {windowSize.height}
         </div>
       </div>
     </div>

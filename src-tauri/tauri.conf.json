@@ -15,9 +15,12 @@
         "title": "after-the-43rd-sunset",
         "width": 390,
         "height": 844,
-        "resizable": false,
-        "decorations": false,
-        "center": true
+        "resizable": true,
+        "decorations": true,
+        "center": true,
+        "transparent": true,
+        "minWidth": 300,
+        "minHeight": 650
       }
     ],
     "security": {
