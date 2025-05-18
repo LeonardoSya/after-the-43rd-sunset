@@ -1,0 +1,16 @@
+version: '3'
+
+services:
+  nextjs:
+    build: .
+    image: after-the-43rd-sunset:latest
+    ports:
+      - "3000:3000"
+    restart: always
+    environment:
+      - NODE_ENV=production
+    volumes:
+      - nextjs_data:/app/data
+
+volumes:
+  nextjs_data:
