@@ -1,0 +1,74 @@
+name: Deploy to Aliyun Server
+
+on:
+  push:
+    branches:
+      - master # 触发分支更新为 master
+
+env:
+  ALIYUN_REGISTRY_ENDPOINT: crpi-55nb4k74iwewodaa.cn-beijing.personal.cr.aliyuncs.com # 阿里云镜像仓库公网接入点
+  ALIYUN_REGISTRY_ENDPOINT_VPC: crpi-55nb4k74iwewodaa-vpc.cn-beijing.personal.cr.aliyuncs.com # 阿里云镜像仓库VPC接入点
+  ALIYUN_IMAGE_NAME: after-the-43rd-sunset # 阿里云镜像仓库中的仓库名（不含命名空间）
+  DOCKER_IMAGE_TAG: latest
+
+jobs:
+  build-and-push:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Log in to Aliyun Container Registry (Public Endpoint)
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.ALIYUN_REGISTRY_ENDPOINT }}
+          username: ${{ secrets.ALIYUN_CR_USERNAME }}
+          password: ${{ secrets.ALIYUN_CR_PASSWORD }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Dockerfile # 确保 Dockerfile 在根目录
+          platforms: linux/amd64 # 构建适用于阿里云服务器的架构
+          push: true
+          # 标签格式: PUBLIC_ENDPOINT/NAMESPACE/IMAGE_NAME:TAG
+          tags: ${{ env.ALIYUN_REGISTRY_ENDPOINT }}/${{ secrets.ALIYUN_CR_USERNAME }}/${{ env.ALIYUN_IMAGE_NAME }}:${{ env.DOCKER_IMAGE_TAG }}
+
+  deploy-to-server:
+    name: Deploy to Aliyun Server
+    needs: build-and-push # 确保先构建和推送镜像
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to server
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_PRIVATE_KEY }}
+          script: |
+            echo "Logging into Aliyun Container Registry on server (VPC Endpoint)..."
+            docker login -u ${{ secrets.ALIYUN_CR_USERNAME }} -p ${{ secrets.ALIYUN_CR_PASSWORD }} ${{ env.ALIYUN_REGISTRY_ENDPOINT_VPC }}
+
+            echo "Pulling the latest image (VPC Endpoint)..."
+            # 拉取格式: VPC_ENDPOINT/NAMESPACE/IMAGE_NAME:TAG
+            docker pull ${{ env.ALIYUN_REGISTRY_ENDPOINT_VPC }}/${{ secrets.ALIYUN_CR_USERNAME }}/${{ env.ALIYUN_IMAGE_NAME }}:${{ env.DOCKER_IMAGE_TAG }}
+
+            echo "Stopping and removing the old container..."
+            docker stop after-the-43rd-sunset || true
+            docker rm after-the-43rd-sunset || true
+
+            echo "Starting the new container..."
+            # 运行格式: VPC_ENDPOINT/NAMESPACE/IMAGE_NAME:TAG (实际上本地拉取后可直接用NAMESPACE/IMAGE_NAME:TAG)
+            # 为保持一致性，这里仍使用完整路径，但Docker通常会解析本地已有的镜像
+            docker run -d -p 80:3000 --name after-the-43rd-sunset --restart=always \
+              ${{ env.ALIYUN_REGISTRY_ENDPOINT_VPC }}/${{ secrets.ALIYUN_CR_USERNAME }}/${{ env.ALIYUN_IMAGE_NAME }}:${{ env.DOCKER_IMAGE_TAG }}
+
+            echo "Deployment completed!"
+            docker ps 
